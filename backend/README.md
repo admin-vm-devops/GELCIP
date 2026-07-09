@@ -1,110 +1,77 @@
-# GELCIP - Infraestrutura
+# Backend - Detalhes Técnicos
 
-## Visão Geral
+Documentação específica da infraestrutura serverless. Para visão geral do projeto, veja o [README principal](../README.md).
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                        AWS (us-east-2)                           │
-│                                                                 │
-│  ┌─────────────┐     ┌─────────────┐     ┌──────────────────┐  │
-│  │  S3 Bucket  │     │ API Gateway │     │    DynamoDB      │  │
-│  │   gelcip    │     │   (REST)    │     │ gelcip-inscricoes │  │
-│  │  (website)  │     │    /prod    │     │ gelcip-contatos   │  │
-│  └─────────────┘     └──────┬──────┘     └────────▲─────────┘  │
-│         │                   │                      │            │
-│         │            ┌──────┴──────┐               │            │
-│         │            │   Lambda    │───────────────┘            │
-│         │            │ inscricao   │                            │
-│         │            │  contato    │──────┐                     │
-│         │            └─────────────┘      │                     │
-│         │                                 ▼                     │
-│         │                          ┌───────────┐                │
-│         │                          │    SES    │                │
-│         │                          │ (e-mail)  │                │
-│         │                          └───────────┘                │
-└─────────┼───────────────────────────────────────────────────────┘
-          │
-    ┌─────┴─────┐
-    │  Usuário  │
-    │ (browser) │
-    └───────────┘
-```
-
-## Recursos
+## Recursos AWS
 
 | Recurso | Nome/ID | Gerenciado por |
 |---------|---------|----------------|
-| S3 (site) | `gelcip` | Manual (pré-existente) |
-| S3 (deploy) | `gelcip-deploy` | Manual |
+| S3 (site) | `gelcip` | Manual |
+| S3 (artefatos) | `gelcip-deploy` | Manual |
 | API Gateway | `zj6393ukd0` | Stack `gelcip-backend` |
-| Lambda inscricao | `gelcip-inscricao` | Stack `gelcip-backend` |
-| Lambda contato | `gelcip-contato` | Stack `gelcip-backend` |
-| DynamoDB inscricoes | `gelcip-inscricoes` | Stack `gelcip-backend` |
-| DynamoDB contatos | `gelcip-contatos` | Stack `gelcip-backend` |
-| SES identity | `contato@gelcip.com` | Manual |
+| Lambda | `gelcip-inscricao` | Stack `gelcip-backend` |
+| Lambda | `gelcip-contato` | Stack `gelcip-backend` |
+| Lambda | `gelcip-admin` | Stack `gelcip-backend` |
+| DynamoDB | `gelcip-inscricoes` | Stack `gelcip-backend` |
+| DynamoDB | `gelcip-contatos` | Stack `gelcip-backend` |
+| SSM | `/gelcip/admin-password-hash` | Manual |
+| SSM | `/gelcip/jwt-secret` | Manual |
+| SES | `contato@gelcip.com` | Manual |
 
-## Comandos
+## Endpoints da API
 
-### Deploy do site (frontend)
+Base: `https://zj6393ukd0.execute-api.us-east-2.amazonaws.com/prod`
+
+| Método | Path | Auth | Descrição |
+|--------|------|------|-----------|
+| POST | `/inscricao` | Não | Recebe inscrição de curso |
+| POST | `/contato` | Não | Recebe mensagem de contato |
+| POST | `/admin/login` | Não | Autentica admin, retorna JWT |
+| GET | `/admin/inscricoes` | JWT | Lista inscrições |
+| GET | `/admin/contatos` | JWT | Lista contatos |
+| DELETE | `/admin/inscricoes/{id}` | JWT | Remove inscrição |
+| DELETE | `/admin/contatos/{id}` | JWT | Remove contato |
+
+## Variáveis de Ambiente (Lambdas)
+
+| Variável | Lambda | Descrição |
+|----------|--------|-----------|
+| `TABLE_NAME` | inscricao, contato | Nome da tabela DynamoDB |
+| `ADMIN_EMAIL` | inscricao, contato | E-mail para notificações SES |
+| `SITE_DOMAIN` | todas | Domínio permitido no CORS |
+| `INSCRICOES_TABLE` | admin | Tabela de inscrições |
+| `CONTATOS_TABLE` | admin | Tabela de contatos |
+
+## Templates CloudFormation
+
+| Arquivo | Uso |
+|---------|-----|
+| `deploy.yaml` | Deploy incremental (só backend, sem S3) |
+| `template.yaml` | Recriação completa (S3 + backend + SES) — usar em conta limpa |
+
+## Instalar dependências da Lambda admin
+
 ```bash
-aws s3 sync ~/Projects/GELCIP s3://gelcip \
-  --exclude ".git/*" \
-  --exclude "backend/*" \
-  --exclude ".gitignore" \
-  --region us-east-2
+cd admin && npm install
 ```
 
-### Deploy do backend (após alterações nas Lambdas)
-```bash
-cd ~/Projects/GELCIP/backend
-
-aws cloudformation package \
-  --template-file template.yaml \
-  --s3-bucket gelcip-deploy \
-  --output-template-file packaged.yaml \
-  --region us-east-2
-
-aws cloudformation deploy \
-  --template-file packaged.yaml \
-  --stack-name gelcip-backend \
-  --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
-  --parameter-overrides AdminEmail=contato@gelcip.com \
-  --region us-east-2
-```
-
-### Recriação do zero (nova conta)
-O `template.yaml` contém toda a infra (S3 + backend). Usar em contas limpas:
-```bash
-cd ~/Projects/GELCIP/backend
-
-aws cloudformation package \
-  --template-file template.yaml \
-  --s3-bucket BUCKET_TEMPORARIO \
-  --output-template-file packaged.yaml \
-  --region us-east-2
-
-aws cloudformation deploy \
-  --template-file packaged.yaml \
-  --stack-name gelcip-infra \
-  --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
-  --region us-east-2
-```
-
-## URLs
-
-- **Site:** http://gelcip.s3-website.us-east-2.amazonaws.com
-- **API:** https://zj6393ukd0.execute-api.us-east-2.amazonaws.com/prod
-- **Endpoints:**
-  - `POST /inscricao` — recebe inscrições de cursos
-  - `POST /contato` — recebe mensagens de contato
+As Lambdas `inscricao` e `contato` usam apenas o AWS SDK (incluso no runtime).
 
 ## SES
 
-O e-mail `contato@gelcip.com` precisa ser verificado no SES. Um e-mail de verificação foi enviado para esse endereço. Enquanto não for confirmado, as Lambdas salvam os dados no DynamoDB mas não enviam notificação por e-mail.
-
-Para verificar status:
+Status da verificação:
 ```bash
 aws ses get-identity-verification-attributes \
-  --identities contato@gelcip.com \
-  --region us-east-2
+  --identities contato@gelcip.com --region us-east-2
+```
+
+Enquanto não verificado, os dados são salvos no DynamoDB mas o e-mail de notificação não é enviado.
+
+## Alterar senha do admin
+
+```bash
+node -e "console.log(require('bcryptjs').hashSync('NOVA_SENHA', 10))"
+# Copie o hash e atualize no SSM:
+aws ssm put-parameter --name /gelcip/admin-password-hash \
+  --value 'HASH_AQUI' --type SecureString --overwrite --region us-east-2
 ```
