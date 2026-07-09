@@ -124,6 +124,30 @@ aws cloudformation deploy \
 echo -e "${GREEN}✓ Backend deployado${NC}"
 
 # -----------------------------------------------------------------------------
+# 5b. Atualizar URL da API no script.js
+# -----------------------------------------------------------------------------
+echo -e "${YELLOW}    Atualizando URL da API no script.js...${NC}"
+
+API_URL=$(aws cloudformation describe-stacks \
+  --stack-name "$STACK_NAME" \
+  --query "Stacks[0].Outputs[?OutputKey=='ApiUrl'].OutputValue" \
+  --output text \
+  --region "$REGION")
+
+if [ -z "$API_URL" ] || [ "$API_URL" = "None" ]; then
+  echo -e "${RED}ERRO: Não foi possível obter a URL da API do stack.${NC}"
+  exit 1
+fi
+
+# Remover trailing slash se houver
+API_URL="${API_URL%/}"
+
+SCRIPT_FILE="${PROJECT_ROOT}/script.js"
+sed -i "s|const API_BASE = '.*';|const API_BASE = '${API_URL}';|" "$SCRIPT_FILE"
+
+echo -e "${GREEN}    ✓ script.js atualizado: ${API_URL}${NC}"
+
+# -----------------------------------------------------------------------------
 # 6. Fazer upload do site para S3
 # -----------------------------------------------------------------------------
 echo -e "${YELLOW}[6/6] Sincronizando site com S3...${NC}"
@@ -148,11 +172,6 @@ echo "Admin: ${SITE_DOMAIN}/admin.html"
 echo ""
 
 # Mostrar URL da API
-API_URL=$(aws cloudformation describe-stacks \
-  --stack-name "$STACK_NAME" \
-  --query "Stacks[0].Outputs[?OutputKey=='ApiUrl'].OutputValue" \
-  --output text \
-  --region "$REGION")
 echo "API:   ${API_URL}"
 echo ""
 echo -e "${YELLOW}NOTA: Verifique o e-mail ${ADMIN_EMAIL} no SES para ativar notificações.${NC}"
