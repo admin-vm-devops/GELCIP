@@ -5,11 +5,13 @@ Documentação específica da infraestrutura serverless. Para visão geral do pr
 ## Deploy / Destroy rápido
 
 ```bash
+cd ~/Projects/GELCIP
+
 # Deploy completo (cria tudo do zero)
-./backend/scripts/deploy.sh
+./scripts/deploy.sh
 
 # Destroy (deleta infra, preserva buckets S3 vazios)
-./backend/scripts/destroy.sh
+./scripts/destroy.sh
 ```
 
 ### Variáveis de ambiente (opcional)
@@ -25,19 +27,28 @@ Documentação específica da infraestrutura serverless. Para visão geral do pr
 |---------|---------|----------------|
 | S3 (site) | `gelcip` | Manual |
 | S3 (artefatos) | `gelcip-deploy` | Manual |
-| API Gateway | `zj6393ukd0` | Stack `gelcip-backend` |
+| API Gateway | *(URL dinâmica via CloudFormation Output)* | Stack `gelcip-backend` |
 | Lambda | `gelcip-inscricao` | Stack `gelcip-backend` |
 | Lambda | `gelcip-contato` | Stack `gelcip-backend` |
 | Lambda | `gelcip-admin` | Stack `gelcip-backend` |
+| Lambda | `gelcip-empty-buckets` | Stack `gelcip-backend` |
 | DynamoDB | `gelcip-inscricoes` | Stack `gelcip-backend` |
 | DynamoDB | `gelcip-contatos` | Stack `gelcip-backend` |
 | SSM | `/gelcip/admin-password-hash` | Stack `gelcip-backend` |
 | SSM | `/gelcip/jwt-secret` | Stack `gelcip-backend` |
 | SES | `contato@gelcip.com` | Manual |
 
+> **Nota:** A URL da API Gateway é gerada dinamicamente pelo CloudFormation a cada deploy.
+> O `deploy.sh` captura essa URL automaticamente e atualiza o `script.js` do frontend.
+
 ## Endpoints da API
 
-Base: `https://zj6393ukd0.execute-api.us-east-2.amazonaws.com/prod`
+Base: *(gerada pelo CloudFormation — consulte o Output `ApiUrl` da stack `gelcip-backend`)*
+
+```bash
+aws cloudformation describe-stacks --stack-name gelcip-backend --region us-east-2 \
+  --query "Stacks[0].Outputs[?OutputKey=='ApiUrl'].OutputValue" --output text
+```
 
 | Método | Path | Auth | Descrição |
 |--------|------|------|-----------|
@@ -48,6 +59,15 @@ Base: `https://zj6393ukd0.execute-api.us-east-2.amazonaws.com/prod`
 | GET | `/admin/contatos` | JWT | Lista contatos |
 | DELETE | `/admin/inscricoes/{id}` | JWT | Remove inscrição |
 | DELETE | `/admin/contatos/{id}` | JWT | Remove contato |
+
+## Lambdas
+
+| Lambda | Diretório | Função |
+|--------|-----------|--------|
+| `gelcip-inscricao` | `inscricao/` | Recebe inscrições, salva no DynamoDB, notifica via SES |
+| `gelcip-contato` | `contato/` | Recebe contatos, salva no DynamoDB, notifica via SES |
+| `gelcip-admin` | `admin/` | Login JWT + CRUD de inscrições/contatos |
+| `gelcip-empty-buckets` | `empty-buckets/` | Custom resource — esvazia buckets S3 ao deletar a stack |
 
 ## Variáveis de Ambiente (Lambdas)
 
@@ -69,7 +89,7 @@ Base: `https://zj6393ukd0.execute-api.us-east-2.amazonaws.com/prod`
 ## Instalar dependências da Lambda admin
 
 ```bash
-cd admin && npm install
+cd backend/admin && npm install
 ```
 
 As Lambdas `inscricao` e `contato` usam apenas o AWS SDK (incluso no runtime).
