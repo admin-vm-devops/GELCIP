@@ -168,6 +168,35 @@ Resources:
             Path: /admin/contatos/{id}
             Method: DELETE
 
+  # Custom Resource - Esvaziar buckets S3 ao deletar o stack
+  EmptyBucketsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: gelcip-empty-buckets
+      Handler: index.handler
+      CodeUri: empty-buckets/
+      Timeout: 300
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - s3:ListBucketVersions
+                - s3:DeleteObject
+                - s3:DeleteObjectVersion
+              Resource:
+                - arn:aws:s3:::gelcip
+                - arn:aws:s3:::gelcip/*
+                - arn:aws:s3:::gelcip-deploy
+                - arn:aws:s3:::gelcip-deploy/*
+
+  EmptyBucketsOnDelete:
+    Type: Custom::EmptyBuckets
+    Properties:
+      ServiceToken: !GetAtt EmptyBucketsFunction.Arn
+      BucketNames:
+        - gelcip
+        - gelcip-deploy
+
 Outputs:
   ApiUrl:
     Description: URL base da API
