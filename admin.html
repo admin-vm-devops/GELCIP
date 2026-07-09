@@ -1,0 +1,662 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex, nofollow">
+    <title>GELCIP | Administração</title>
+    <link rel="icon" type="image/jpeg" href="assets/gelcip-logo.jpeg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&display=swap">
+    <style>
+      :root {
+        --ink: #132638;
+        --muted: #5c6f80;
+        --paper: #f4f8fb;
+        --surface: #ffffff;
+        --line: #d8e4ed;
+        --primary: #236f9d;
+        --primary-dark: #164866;
+        --danger: #c0392b;
+        --danger-light: #fdecea;
+        --success: #27ae60;
+        --radius: 8px;
+        --shadow: 0 4px 24px rgba(19, 38, 56, 0.08);
+      }
+
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+
+      body {
+        font-family: Inter, "Segoe UI", Roboto, sans-serif;
+        background: var(--paper);
+        color: var(--ink);
+        line-height: 1.5;
+        min-height: 100vh;
+      }
+
+      /* Header */
+      .admin-header {
+        background: var(--primary-dark);
+        color: #fff;
+        padding: 1rem 1.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      .admin-header h1 {
+        font-size: 1.1rem;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .admin-header img {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+      }
+
+      .btn-logout {
+        background: rgba(255,255,255,0.15);
+        border: 1px solid rgba(255,255,255,0.3);
+        color: #fff;
+        padding: 0.5rem 1rem;
+        border-radius: var(--radius);
+        cursor: pointer;
+        font: inherit;
+        font-size: 0.85rem;
+        font-weight: 700;
+      }
+
+      .btn-logout:hover {
+        background: rgba(255,255,255,0.25);
+      }
+
+      /* Login */
+      .login-container {
+        display: grid;
+        place-items: center;
+        min-height: 100vh;
+        padding: 1rem;
+      }
+
+      .login-card {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        padding: 2.5rem 2rem;
+        width: 100%;
+        max-width: 380px;
+        text-align: center;
+      }
+
+      .login-card img {
+        width: 72px;
+        height: 72px;
+        border-radius: 50%;
+        margin: 0 auto 1rem;
+      }
+
+      .login-card h1 {
+        font-size: 1.4rem;
+        margin-bottom: 0.3rem;
+      }
+
+      .login-card p {
+        color: var(--muted);
+        font-size: 0.9rem;
+        margin-bottom: 1.5rem;
+      }
+
+      .login-card label {
+        display: block;
+        text-align: left;
+        font-weight: 700;
+        font-size: 0.85rem;
+        margin-bottom: 0.3rem;
+        color: var(--ink);
+      }
+
+      .login-card input {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        font: inherit;
+        margin-bottom: 1rem;
+      }
+
+      .login-card input:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(35, 111, 157, 0.15);
+      }
+
+      .btn-primary {
+        width: 100%;
+        padding: 0.8rem;
+        background: var(--primary);
+        color: #fff;
+        border: none;
+        border-radius: var(--radius);
+        font: inherit;
+        font-weight: 800;
+        cursor: pointer;
+        font-size: 0.95rem;
+      }
+
+      .btn-primary:hover { background: var(--primary-dark); }
+      .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+
+      .login-error {
+        color: var(--danger);
+        font-size: 0.85rem;
+        margin-top: 0.75rem;
+        min-height: 1.2rem;
+      }
+
+      /* Dashboard */
+      .dashboard { display: none; }
+      .dashboard.active { display: block; }
+      .login-container.hidden { display: none; }
+
+      .tabs {
+        display: flex;
+        gap: 0;
+        background: var(--surface);
+        border-bottom: 1px solid var(--line);
+        padding: 0 1.5rem;
+      }
+
+      .tab-btn {
+        padding: 1rem 1.5rem;
+        border: none;
+        background: none;
+        cursor: pointer;
+        font: inherit;
+        font-weight: 700;
+        font-size: 0.9rem;
+        color: var(--muted);
+        border-bottom: 3px solid transparent;
+        transition: color 0.2s, border-color 0.2s;
+      }
+
+      .tab-btn.active {
+        color: var(--primary);
+        border-bottom-color: var(--primary);
+      }
+
+      .tab-btn:hover { color: var(--ink); }
+
+      .tab-content { display: none; padding: 1.5rem; }
+      .tab-content.active { display: block; }
+
+      /* Stats */
+      .stats {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+      }
+
+      .stat-card {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        padding: 1rem 1.5rem;
+        flex: 1;
+      }
+
+      .stat-card .number {
+        font-size: 2rem;
+        font-weight: 800;
+        color: var(--primary);
+      }
+
+      .stat-card .label {
+        color: var(--muted);
+        font-size: 0.85rem;
+      }
+
+      /* Toolbar */
+      .toolbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+        gap: 1rem;
+        flex-wrap: wrap;
+      }
+
+      .search-input {
+        padding: 0.6rem 1rem;
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        font: inherit;
+        width: 260px;
+        max-width: 100%;
+      }
+
+      .btn-export {
+        padding: 0.6rem 1rem;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        cursor: pointer;
+        font: inherit;
+        font-weight: 700;
+        font-size: 0.85rem;
+        color: var(--ink);
+      }
+
+      .btn-export:hover { background: var(--paper); }
+
+      /* Table */
+      .table-container {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        overflow-x: auto;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.88rem;
+      }
+
+      th {
+        background: var(--paper);
+        text-align: left;
+        padding: 0.75rem 1rem;
+        font-weight: 700;
+        color: var(--muted);
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        white-space: nowrap;
+      }
+
+      td {
+        padding: 0.75rem 1rem;
+        border-top: 1px solid var(--line);
+        vertical-align: top;
+      }
+
+      tr:hover td { background: rgba(244, 248, 251, 0.5); }
+
+      .btn-delete {
+        background: none;
+        border: none;
+        color: var(--danger);
+        cursor: pointer;
+        font-weight: 700;
+        font-size: 0.8rem;
+        padding: 0.3rem 0.6rem;
+        border-radius: 4px;
+      }
+
+      .btn-delete:hover {
+        background: var(--danger-light);
+      }
+
+      .empty-state {
+        text-align: center;
+        padding: 3rem 1rem;
+        color: var(--muted);
+      }
+
+      .loading {
+        text-align: center;
+        padding: 2rem;
+        color: var(--muted);
+      }
+
+      /* Responsive */
+      @media (max-width: 768px) {
+        .stats { flex-direction: column; }
+        .toolbar { flex-direction: column; align-items: stretch; }
+        .search-input { width: 100%; }
+        .tabs { overflow-x: auto; }
+        .tab-btn { padding: 0.8rem 1rem; font-size: 0.85rem; }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- LOGIN -->
+    <div class="login-container" id="loginContainer">
+      <div class="login-card">
+        <img src="assets/gelcip-logo.jpeg" alt="Logo GELCIP" width="72" height="72">
+        <h1>Administração</h1>
+        <p>Acesse para gerenciar inscrições e contatos</p>
+        <form id="loginForm">
+          <label for="usuario">Usuário</label>
+          <input type="text" id="usuario" name="usuario" autocomplete="username" required>
+          <label for="senha">Senha</label>
+          <input type="password" id="senha" name="senha" autocomplete="current-password" required>
+          <button class="btn-primary" type="submit" id="loginBtn">Entrar</button>
+          <p class="login-error" id="loginError" role="alert"></p>
+        </form>
+      </div>
+    </div>
+
+    <!-- DASHBOARD -->
+    <div class="dashboard" id="dashboard">
+      <header class="admin-header">
+        <h1>
+          <img src="assets/gelcip-logo.jpeg" alt="" width="32" height="32">
+          GELCIP Admin
+        </h1>
+        <button class="btn-logout" id="logoutBtn">Sair</button>
+      </header>
+
+      <nav class="tabs">
+        <button class="tab-btn active" data-tab="inscricoes">Inscrições</button>
+        <button class="tab-btn" data-tab="contatos">Contatos</button>
+      </nav>
+
+      <!-- Inscrições -->
+      <div class="tab-content active" id="tab-inscricoes">
+        <div class="stats">
+          <div class="stat-card">
+            <div class="number" id="totalInscricoes">-</div>
+            <div class="label">Total de inscrições</div>
+          </div>
+        </div>
+        <div class="toolbar">
+          <input type="search" class="search-input" id="searchInscricoes" placeholder="Buscar por nome ou curso...">
+          <button class="btn-export" id="exportInscricoes">⬇ Exportar CSV</button>
+        </div>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>Nome</th>
+                <th>Curso</th>
+                <th>E-mail</th>
+                <th>Telefone</th>
+                <th>Período</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="inscricoesBody">
+              <tr><td colspan="7" class="loading">Carregando...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Contatos -->
+      <div class="tab-content" id="tab-contatos">
+        <div class="stats">
+          <div class="stat-card">
+            <div class="number" id="totalContatos">-</div>
+            <div class="label">Total de mensagens</div>
+          </div>
+        </div>
+        <div class="toolbar">
+          <input type="search" class="search-input" id="searchContatos" placeholder="Buscar por nome ou e-mail...">
+          <button class="btn-export" id="exportContatos">⬇ Exportar CSV</button>
+        </div>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>Nome</th>
+                <th>E-mail</th>
+                <th>Mensagem</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="contatosBody">
+              <tr><td colspan="5" class="loading">Carregando...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const API_BASE = 'https://zj6393ukd0.execute-api.us-east-2.amazonaws.com/prod';
+
+      // State
+      let token = sessionStorage.getItem('gelcip_token');
+      let inscricoes = [];
+      let contatos = [];
+
+      // Elements
+      const loginContainer = document.getElementById('loginContainer');
+      const dashboard = document.getElementById('dashboard');
+      const loginForm = document.getElementById('loginForm');
+      const loginError = document.getElementById('loginError');
+      const loginBtn = document.getElementById('loginBtn');
+      const logoutBtn = document.getElementById('logoutBtn');
+
+      // Auth
+      function showDashboard() {
+        loginContainer.classList.add('hidden');
+        dashboard.classList.add('active');
+        loadData();
+      }
+
+      function showLogin() {
+        loginContainer.classList.remove('hidden');
+        dashboard.classList.remove('active');
+        token = null;
+        sessionStorage.removeItem('gelcip_token');
+      }
+
+      async function apiRequest(method, path, body = null) {
+        const opts = {
+          method,
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+        };
+        if (body) opts.body = JSON.stringify(body);
+
+        const res = await fetch(`${API_BASE}${path}`, opts);
+        if (res.status === 401) {
+          showLogin();
+          throw new Error('Sessão expirada');
+        }
+        return res.json();
+      }
+
+      // Login
+      loginForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        loginError.textContent = '';
+        loginBtn.disabled = true;
+        loginBtn.textContent = 'Entrando...';
+
+        try {
+          const res = await fetch(`${API_BASE}/admin/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              usuario: document.getElementById('usuario').value,
+              senha: document.getElementById('senha').value,
+            }),
+          });
+
+          const data = await res.json();
+
+          if (res.ok && data.token) {
+            token = data.token;
+            sessionStorage.setItem('gelcip_token', token);
+            showDashboard();
+          } else {
+            loginError.textContent = data.error || 'Erro ao fazer login';
+          }
+        } catch (err) {
+          loginError.textContent = 'Erro de conexão. Tente novamente.';
+        } finally {
+          loginBtn.disabled = false;
+          loginBtn.textContent = 'Entrar';
+        }
+      });
+
+      logoutBtn.addEventListener('click', showLogin);
+
+      // Tabs
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+          document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+          btn.classList.add('active');
+          document.getElementById(`tab-${btn.dataset.tab}`).classList.add('active');
+        });
+      });
+
+      // Load data
+      async function loadData() {
+        try {
+          const [inscRes, contRes] = await Promise.all([
+            apiRequest('GET', '/admin/inscricoes'),
+            apiRequest('GET', '/admin/contatos'),
+          ]);
+          inscricoes = inscRes.items || [];
+          contatos = contRes.items || [];
+          renderInscricoes();
+          renderContatos();
+        } catch (err) {
+          console.error('Erro ao carregar dados:', err);
+        }
+      }
+
+      // Render inscricoes
+      function renderInscricoes(filter = '') {
+        const tbody = document.getElementById('inscricoesBody');
+        const filtered = inscricoes.filter(i =>
+          !filter || i.nome.toLowerCase().includes(filter) || i.curso.toLowerCase().includes(filter)
+        );
+
+        document.getElementById('totalInscricoes').textContent = inscricoes.length;
+
+        if (filtered.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="7" class="empty-state">Nenhuma inscrição encontrada</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = filtered.map(i => `
+          <tr>
+            <td>${formatDate(i.criadoEm)}</td>
+            <td><strong>${esc(i.nome)}</strong></td>
+            <td>${esc(i.curso)}</td>
+            <td>${esc(i.email)}</td>
+            <td>${esc(i.telefone || '-')}</td>
+            <td>${esc(i.periodo || '-')}</td>
+            <td><button class="btn-delete" onclick="deleteInscricao('${i.id}')">Excluir</button></td>
+          </tr>
+        `).join('');
+      }
+
+      // Render contatos
+      function renderContatos(filter = '') {
+        const tbody = document.getElementById('contatosBody');
+        const filtered = contatos.filter(c =>
+          !filter || c.nome.toLowerCase().includes(filter) || c.email.toLowerCase().includes(filter)
+        );
+
+        document.getElementById('totalContatos').textContent = contatos.length;
+
+        if (filtered.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="5" class="empty-state">Nenhum contato encontrado</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = filtered.map(c => `
+          <tr>
+            <td>${formatDate(c.criadoEm)}</td>
+            <td><strong>${esc(c.nome)}</strong></td>
+            <td>${esc(c.email)}</td>
+            <td>${esc(c.mensagem)}</td>
+            <td><button class="btn-delete" onclick="deleteContato('${c.id}')">Excluir</button></td>
+          </tr>
+        `).join('');
+      }
+
+      // Delete
+      async function deleteInscricao(id) {
+        if (!confirm('Excluir esta inscrição?')) return;
+        await apiRequest('DELETE', `/admin/inscricoes/${id}`);
+        inscricoes = inscricoes.filter(i => i.id !== id);
+        renderInscricoes();
+      }
+
+      async function deleteContato(id) {
+        if (!confirm('Excluir este contato?')) return;
+        await apiRequest('DELETE', `/admin/contatos/${id}`);
+        contatos = contatos.filter(c => c.id !== id);
+        renderContatos();
+      }
+
+      // Search
+      document.getElementById('searchInscricoes').addEventListener('input', (e) => {
+        renderInscricoes(e.target.value.toLowerCase());
+      });
+
+      document.getElementById('searchContatos').addEventListener('input', (e) => {
+        renderContatos(e.target.value.toLowerCase());
+      });
+
+      // Export CSV
+      document.getElementById('exportInscricoes').addEventListener('click', () => {
+        const headers = ['Data', 'Nome', 'Curso', 'Email', 'Telefone', 'Periodo', 'Observacoes'];
+        const rows = inscricoes.map(i => [
+          i.criadoEm, i.nome, i.curso, i.email, i.telefone, i.periodo, i.observacoes
+        ].map(csvEscape));
+        downloadCsv('inscricoes-gelcip.csv', headers, rows);
+      });
+
+      document.getElementById('exportContatos').addEventListener('click', () => {
+        const headers = ['Data', 'Nome', 'Email', 'Mensagem'];
+        const rows = contatos.map(c => [
+          c.criadoEm, c.nome, c.email, c.mensagem
+        ].map(csvEscape));
+        downloadCsv('contatos-gelcip.csv', headers, rows);
+      });
+
+      // Utilities
+      function esc(str) {
+        const div = document.createElement('div');
+        div.textContent = str || '';
+        return div.innerHTML;
+      }
+
+      function formatDate(iso) {
+        if (!iso) return '-';
+        try {
+          return new Date(iso).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+        } catch { return iso; }
+      }
+
+      function csvEscape(val) {
+        const s = String(val || '');
+        return `"${s.replace(/"/g, '""')}"`;
+      }
+
+      function downloadCsv(filename, headers, rows) {
+        const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = filename;
+        link.click();
+        URL.revokeObjectURL(link.href);
+      }
+
+      // Init - check if already logged in
+      if (token) {
+        showDashboard();
+      }
+    </script>
+  </body>
+</html>

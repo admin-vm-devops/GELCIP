@@ -1,1 +1,7 @@
 backend/packaged.yaml
+backend/packaged-deploy.yaml
+backend/node_modules/
+backend/package.json
+backend/package-lock.json
+backend/admin/node_modules/
+backend/admin/package-lock.json
