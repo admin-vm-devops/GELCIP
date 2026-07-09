@@ -109,7 +109,9 @@ a {
   height: 54px;
   border-radius: 50%;
   object-fit: cover;
-  box-shadow: 0 0 0 3px #fff;
+  box-shadow: 0 0 0 3px #fff, 0 2px 8px rgba(19, 38, 56, 0.12);
+  image-rendering: smooth;
+  filter: contrast(1.05) brightness(1.02);
 }
 
 .brand strong,
@@ -230,7 +232,9 @@ a {
   margin: 0 auto 1.6rem;
   border-radius: 50%;
   object-fit: cover;
-  box-shadow: 0 0 0 8px rgba(255, 255, 255, 0.82), var(--shadow);
+  box-shadow: 0 0 0 8px rgba(255, 255, 255, 0.82), 0 0 0 10px rgba(35, 111, 157, 0.15), var(--shadow);
+  image-rendering: smooth;
+  filter: contrast(1.05) brightness(1.02) saturate(1.1);
 }
 
 .eyebrow {
