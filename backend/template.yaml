@@ -26,6 +26,8 @@ Resources:
 
   SiteBucket:
     Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Properties:
       BucketName: gelcip
       PublicAccessBlockConfiguration:
@@ -39,6 +41,8 @@ Resources:
 
   SiteBucketPolicy:
     Type: AWS::S3::BucketPolicy
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Properties:
       Bucket: !Ref SiteBucket
       PolicyDocument:
@@ -56,6 +60,8 @@ Resources:
 
   DeployBucket:
     Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Properties:
       BucketName: gelcip-deploy
       LifecycleConfiguration:
@@ -230,6 +236,38 @@ Resources:
             RestApiId: !Ref GelcipApi
             Path: /admin/contatos/{id}
             Method: DELETE
+
+  # ============================================================
+  # CUSTOM RESOURCE - Esvaziar buckets S3 ao deletar o stack
+  # ============================================================
+
+  EmptyBucketsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: gelcip-empty-buckets
+      Handler: index.handler
+      CodeUri: empty-buckets/
+      Timeout: 300
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - s3:ListBucketVersions
+                - s3:DeleteObject
+                - s3:DeleteObjectVersion
+              Resource:
+                - !Sub '${SiteBucket.Arn}'
+                - !Sub '${SiteBucket.Arn}/*'
+                - !Sub '${DeployBucket.Arn}'
+                - !Sub '${DeployBucket.Arn}/*'
+
+  EmptyBucketsOnDelete:
+    Type: Custom::EmptyBuckets
+    Properties:
+      ServiceToken: !GetAtt EmptyBucketsFunction.Arn
+      BucketNames:
+        - !Ref SiteBucket
+        - !Ref DeployBucket
 
 # ============================================================
 # OUTPUTS
