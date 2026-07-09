@@ -1,41 +1,86 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
-Description: Backend serverless para formulários do site GELCIP
+Description: >
+  Infraestrutura completa do site GELCIP - hospedagem estática S3 + backend serverless.
+  NOTA: Este template é para recriação do zero (nova conta/região).
+  Para atualizações incrementais, use o stack 'gelcip-backend' com template.yaml.
 
 Parameters:
   AdminEmail:
     Type: String
     Default: contato@gelcip.com
     Description: E-mail que recebe notificações de inscrições e contatos
-  SiteDomain:
-    Type: String
-    Default: http://gelcip.s3-website.us-east-2.amazonaws.com
-    Description: Domínio do site (para CORS)
 
 Globals:
   Function:
     Runtime: nodejs20.x
     Timeout: 10
     MemorySize: 128
-    Environment:
-      Variables:
-        ADMIN_EMAIL: !Ref AdminEmail
-        SITE_DOMAIN: !Ref SiteDomain
     Architectures:
       - arm64
 
 Resources:
-  # API Gateway
+  # ============================================================
+  # HOSTING - S3 Static Website
+  # ============================================================
+
+  SiteBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: gelcip
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: false
+        IgnorePublicAcls: false
+        BlockPublicPolicy: false
+        RestrictPublicBuckets: false
+      WebsiteConfiguration:
+        IndexDocument: index.html
+        ErrorDocument: index.html
+
+  SiteBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref SiteBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: PublicReadGetObject
+            Effect: Allow
+            Principal: '*'
+            Action: s3:GetObject
+            Resource: !Sub '${SiteBucket.Arn}/*'
+
+  # ============================================================
+  # DEPLOY - S3 Bucket para artefatos CloudFormation
+  # ============================================================
+
+  DeployBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: gelcip-deploy
+      LifecycleConfiguration:
+        Rules:
+          - Id: CleanupOldArtifacts
+            Status: Enabled
+            ExpirationInDays: 30
+
+  # ============================================================
+  # BACKEND - API Gateway
+  # ============================================================
+
   GelcipApi:
     Type: AWS::Serverless::Api
     Properties:
       StageName: prod
       Cors:
-        AllowOrigin: !Sub "'${SiteDomain}'"
+        AllowOrigin: !Sub "'${SiteBucket.WebsiteURL}'"
         AllowMethods: "'POST,OPTIONS'"
         AllowHeaders: "'Content-Type'"
 
-  # DynamoDB - Inscrições
+  # ============================================================
+  # BACKEND - DynamoDB Tables
+  # ============================================================
+
   InscricoesTable:
     Type: AWS::DynamoDB::Table
     Properties:
@@ -48,7 +93,6 @@ Resources:
         - AttributeName: id
           KeyType: HASH
 
-  # DynamoDB - Contatos
   ContatosTable:
     Type: AWS::DynamoDB::Table
     Properties:
@@ -61,7 +105,10 @@ Resources:
         - AttributeName: id
           KeyType: HASH
 
-  # Lambda - Inscrição
+  # ============================================================
+  # BACKEND - Lambda Functions
+  # ============================================================
+
   InscricaoFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -71,6 +118,8 @@ Resources:
       Environment:
         Variables:
           TABLE_NAME: !Ref InscricoesTable
+          ADMIN_EMAIL: !Ref AdminEmail
+          SITE_DOMAIN: !GetAtt SiteBucket.WebsiteURL
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref InscricoesTable
@@ -87,7 +136,6 @@ Resources:
             Path: /inscricao
             Method: POST
 
-  # Lambda - Contato
   ContatoFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -97,6 +145,8 @@ Resources:
       Environment:
         Variables:
           TABLE_NAME: !Ref ContatosTable
+          ADMIN_EMAIL: !Ref AdminEmail
+          SITE_DOMAIN: !GetAtt SiteBucket.WebsiteURL
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref ContatosTable
@@ -113,13 +163,36 @@ Resources:
             Path: /contato
             Method: POST
 
+  # ============================================================
+  # E-MAIL - SES Email Identity
+  # ============================================================
+
+  SesEmailIdentity:
+    Type: AWS::SES::EmailIdentity
+    Properties:
+      EmailIdentity: !Ref AdminEmail
+
+# ============================================================
+# OUTPUTS
+# ============================================================
+
 Outputs:
+  SiteUrl:
+    Description: URL do site (S3 website)
+    Value: !GetAtt SiteBucket.WebsiteURL
+
   ApiUrl:
-    Description: URL base da API
+    Description: URL base da API backend
     Value: !Sub "https://${GelcipApi}.execute-api.${AWS::Region}.amazonaws.com/prod"
+
   InscricoesTableName:
-    Description: Nome da tabela de inscrições
+    Description: Tabela DynamoDB de inscrições
     Value: !Ref InscricoesTable
+
   ContatosTableName:
-    Description: Nome da tabela de contatos
+    Description: Tabela DynamoDB de contatos
     Value: !Ref ContatosTable
+
+  AdminEmailIdentity:
+    Description: E-mail configurado no SES (verificar manualmente)
+    Value: !Ref AdminEmail
