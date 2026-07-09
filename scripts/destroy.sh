@@ -57,7 +57,7 @@ echo "Stack status: ${STACK_STATUS}"
 # -----------------------------------------------------------------------------
 # 2. Deletar o stack
 # -----------------------------------------------------------------------------
-echo -e "${YELLOW}[2/2] Deletando stack (a Lambda esvazia os buckets automaticamente)...${NC}"
+echo -e "${YELLOW}[2/3] Deletando stack (a Lambda esvazia os buckets automaticamente)...${NC}"
 
 aws cloudformation delete-stack \
   --stack-name "$STACK_NAME" \
@@ -70,6 +70,29 @@ aws cloudformation wait stack-delete-complete \
   --region "$REGION"
 
 echo -e "${GREEN}✓ Stack deletado com sucesso${NC}"
+
+# -----------------------------------------------------------------------------
+# 3. Limpar recursos órfãos (SSM Parameters + SES Identity)
+# -----------------------------------------------------------------------------
+echo -e "${YELLOW}[3/3] Limpando recursos órfãos...${NC}"
+
+# SSM Parameters
+for PARAM in "/gelcip/admin-password-hash" "/gelcip/jwt-secret"; do
+  if aws ssm get-parameter --name "$PARAM" --region "$REGION" &>/dev/null; then
+    aws ssm delete-parameter --name "$PARAM" --region "$REGION"
+    echo "  Deletado SSM: $PARAM"
+  fi
+done
+
+# SES Email Identity
+ADMIN_EMAIL="contato@gelcip.com"
+if aws ses get-identity-verification-attributes --identities "$ADMIN_EMAIL" --region "$REGION" \
+   --query "VerificationAttributes.\"${ADMIN_EMAIL}\"" --output text 2>/dev/null | grep -q .; then
+  aws ses delete-identity --identity "$ADMIN_EMAIL" --region "$REGION"
+  echo "  Deletado SES: $ADMIN_EMAIL"
+fi
+
+echo -e "${GREEN}✓ Recursos órfãos limpos${NC}"
 echo ""
 echo "Buckets preservados (vazios):"
 echo "  - s3://gelcip"
