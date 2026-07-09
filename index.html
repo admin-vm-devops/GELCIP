@@ -326,20 +326,20 @@
             </iframe>
           </div>
 
-          <form class="contact-form" aria-label="Formulário local de contato">
+          <form class="contact-form" aria-label="Formulário de contato">
             <label>
               Nome
-              <input type="text" name="nome" autocomplete="name">
+              <input type="text" name="nome" autocomplete="name" required>
             </label>
             <label>
               E-mail
-              <input type="email" name="email" autocomplete="email">
+              <input type="email" name="email" autocomplete="email" required>
             </label>
             <label>
               Mensagem
-              <textarea name="mensagem" rows="4"></textarea>
+              <textarea name="mensagem" rows="4" required></textarea>
             </label>
-            <button class="button primary" type="button" data-local-form>Preparar e-mail</button>
+            <button class="button primary" type="button" data-local-form>Enviar mensagem</button>
             <p class="form-note" role="status" aria-live="polite"></p>
           </form>
         </div>

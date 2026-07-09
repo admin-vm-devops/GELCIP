@@ -1,3 +1,7 @@
+// Configuração da API - atualizar após deploy do backend
+const API_BASE = 'https://zj6393ukd0.execute-api.us-east-2.amazonaws.com/prod';
+
+// Menu toggle
 const menuButton = document.querySelector(".menu-toggle");
 const menu = document.querySelector("#menu");
 
@@ -15,238 +19,111 @@ if (menuButton && menu) {
   });
 }
 
-const storageKeys = {
-  adminEmail: "gelcipAdminEmail",
-  submissions: "gelcipCourseSubmissions"
-};
-
-const adminEmailInput = document.querySelector("#admin-email");
-const saveAdminButton = document.querySelector("[data-save-admin]");
-const adminNote = document.querySelector("[data-admin-note]");
-const courseForm = document.querySelector(".course-form");
-const courseNote = document.querySelector("[data-course-note]");
-const totalSubmissions = document.querySelector("[data-total-submissions]");
-const submissionsList = document.querySelector("[data-submissions-list]");
-const downloadCsvButton = document.querySelector("[data-download-csv]");
-const emailLastButton = document.querySelector("[data-email-last]");
-const emailAllButton = document.querySelector("[data-email-all]");
-const clearSubmissionsButton = document.querySelector("[data-clear-submissions]");
-
-const getSubmissions = () => {
-  try {
-    return JSON.parse(localStorage.getItem(storageKeys.submissions) || "[]");
-  } catch {
-    return [];
-  }
-};
-
-const saveSubmissions = (submissions) => {
-  localStorage.setItem(storageKeys.submissions, JSON.stringify(submissions));
-};
-
-const getAdminEmail = () => {
-  return localStorage.getItem(storageKeys.adminEmail) || "contato@gelcip.com";
-};
-
-const setNote = (element, message) => {
+// Utilitário para exibir mensagens nos formulários
+const setNote = (element, message, isError = false) => {
   if (element) {
     element.textContent = message;
+    element.style.color = isError ? '#c0392b' : '';
   }
 };
 
-const formatSubmission = (submission) => {
-  return [
-    `Curso: ${submission.curso}`,
-    `Nome: ${submission.nome}`,
-    `E-mail: ${submission.email}`,
-    `Telefone: ${submission.telefone || "Não informado"}`,
-    `Período: ${submission.periodo || "Sem preferência"}`,
-    `Observações: ${submission.observacoes || "Nenhuma"}`,
-    `Data: ${submission.data}`
-  ].join("\n");
-};
-
-const openEmail = (subject, body) => {
-  const mailto = new URL(`mailto:${getAdminEmail()}`);
-  mailto.searchParams.set("subject", subject);
-  mailto.searchParams.set("body", body);
-  window.location.href = mailto.toString();
-};
-
-const escapeCsv = (value) => {
-  const text = String(value || "");
-  return `"${text.replaceAll('"', '""')}"`;
-};
-
-const createSubmissionFromForm = (form) => {
-  const data = new FormData(form);
-  return {
-    curso: String(data.get("curso") || "").trim(),
-    nome: String(data.get("nome") || "").trim(),
-    email: String(data.get("email") || "").trim(),
-    telefone: String(data.get("telefone") || "").trim(),
-    periodo: String(data.get("periodo") || "").trim(),
-    observacoes: String(data.get("observacoes") || "").trim(),
-    data: new Date().toLocaleString("pt-BR")
-  };
-};
-
-const renderSubmissions = () => {
-  const submissions = getSubmissions();
-
-  if (totalSubmissions) {
-    totalSubmissions.textContent = String(submissions.length);
-  }
-
-  if (!submissionsList) {
-    return;
-  }
-
-  submissionsList.innerHTML = "";
-
-  if (submissions.length === 0) {
-    const item = document.createElement("li");
-    item.textContent = "Nenhuma inscrição registrada ainda.";
-    submissionsList.append(item);
-    return;
-  }
-
-  submissions.slice(-8).reverse().forEach((submission) => {
-    const item = document.createElement("li");
-    const name = document.createElement("strong");
-    const details = document.createElement("span");
-
-    name.textContent = submission.nome;
-    details.textContent = `${submission.curso} - ${submission.email}`;
-    item.append(name, details);
-    submissionsList.append(item);
-  });
-};
-
-if (adminEmailInput) {
-  adminEmailInput.value = getAdminEmail();
-}
-
-if (saveAdminButton && adminEmailInput) {
-  saveAdminButton.addEventListener("click", () => {
-    const email = adminEmailInput.value.trim();
-
-    if (!email || !email.includes("@")) {
-      setNote(adminNote, "Informe um e-mail válido para o administrador.");
-      return;
-    }
-
-    localStorage.setItem(storageKeys.adminEmail, email);
-    setNote(adminNote, `E-mail do administrador salvo: ${email}`);
-  });
-}
+// Formulário de inscrição em cursos
+const courseForm = document.querySelector(".public-course-form");
+const courseNote = document.querySelector("[data-course-note]");
 
 if (courseForm) {
-  courseForm.addEventListener("submit", (event) => {
+  courseForm.addEventListener("submit", async (event) => {
     event.preventDefault();
 
-    const submission = createSubmissionFromForm(courseForm);
+    const data = new FormData(courseForm);
+    const payload = {
+      curso: String(data.get("curso") || "").trim(),
+      nome: String(data.get("nome") || "").trim(),
+      email: String(data.get("email") || "").trim(),
+      telefone: String(data.get("telefone") || "").trim(),
+      periodo: String(data.get("periodo") || "").trim(),
+      observacoes: String(data.get("observacoes") || "").trim(),
+    };
 
-    if (!submission.curso || !submission.nome || !submission.email) {
-      setNote(courseNote, "Preencha curso, nome e e-mail para enviar a inscrição.");
+    if (!payload.curso || !payload.nome || !payload.email) {
+      setNote(courseNote, "Preencha curso, nome e e-mail para enviar a inscrição.", true);
       return;
     }
 
-    const submissions = getSubmissions();
-    submissions.push(submission);
-    saveSubmissions(submissions);
-    renderSubmissions();
-    courseForm.reset();
-
-    if (courseForm.classList.contains("public-course-form")) {
-      openEmail(`Inscrição de curso - ${submission.nome}`, formatSubmission(submission));
-      setNote(courseNote, "Sua inscrição foi preparada para envio por e-mail ao GELCIP.");
-      return;
+    const submitButton = courseForm.querySelector('button[type="submit"]');
+    if (submitButton) {
+      submitButton.disabled = true;
+      submitButton.textContent = "Enviando...";
     }
 
-    setNote(courseNote, "Inscrição salva nesta área administrativa.");
-  });
-}
+    try {
+      const response = await fetch(`${API_BASE}/inscricao`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
 
-if (emailLastButton) {
-  emailLastButton.addEventListener("click", () => {
-    const submissions = getSubmissions();
-    const last = submissions[submissions.length - 1];
+      const result = await response.json();
 
-    if (!last) {
-      setNote(courseNote, "Salve uma inscrição antes de enviar por e-mail.");
-      return;
+      if (response.ok) {
+        setNote(courseNote, "✓ Inscrição enviada com sucesso! O GELCIP entrará em contato.");
+        courseForm.reset();
+      } else {
+        setNote(courseNote, result.error || "Erro ao enviar inscrição. Tente novamente.", true);
+      }
+    } catch (err) {
+      setNote(courseNote, "Erro de conexão. Verifique sua internet e tente novamente.", true);
+    } finally {
+      if (submitButton) {
+        submitButton.disabled = false;
+        submitButton.textContent = "Enviar inscrição";
+      }
     }
-
-    openEmail(`Inscrição de curso - ${last.nome}`, formatSubmission(last));
   });
 }
 
-if (emailAllButton) {
-  emailAllButton.addEventListener("click", () => {
-    const submissions = getSubmissions();
-
-    if (submissions.length === 0) {
-      setNote(courseNote, "Não há inscrições para enviar.");
-      return;
-    }
-
-    const body = submissions.map(formatSubmission).join("\n\n---\n\n");
-    openEmail("Lista de inscrições de cursos - GELCIP", body);
-  });
-}
-
-if (downloadCsvButton) {
-  downloadCsvButton.addEventListener("click", () => {
-    const submissions = getSubmissions();
-
-    if (submissions.length === 0) {
-      setNote(courseNote, "Não há inscrições para baixar.");
-      return;
-    }
-
-    const headers = ["data", "curso", "nome", "email", "telefone", "periodo", "observacoes"];
-    const rows = submissions.map((submission) => headers.map((field) => escapeCsv(submission[field])).join(","));
-    const csv = [headers.join(","), ...rows].join("\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-    const link = document.createElement("a");
-
-    link.href = URL.createObjectURL(blob);
-    link.download = "inscricoes-gelcip.csv";
-    link.click();
-    URL.revokeObjectURL(link.href);
-    setNote(courseNote, "Arquivo CSV gerado com sucesso.");
-  });
-}
-
-if (clearSubmissionsButton) {
-  clearSubmissionsButton.addEventListener("click", () => {
-    saveSubmissions([]);
-    renderSubmissions();
-    setNote(courseNote, "Lista local de inscrições limpa.");
-  });
-}
-
-const formButton = document.querySelector("[data-local-form]");
+// Formulário de contato
 const contactForm = document.querySelector(".contact-form");
 const contactFormNote = document.querySelector(".contact-form .form-note");
+const contactButton = document.querySelector("[data-local-form]");
 
-if (formButton && contactForm && contactFormNote) {
-  formButton.addEventListener("click", () => {
+if (contactButton && contactForm && contactFormNote) {
+  contactButton.addEventListener("click", async () => {
     const data = new FormData(contactForm);
-    const nome = String(data.get("nome") || "").trim();
-    const email = String(data.get("email") || "").trim();
-    const mensagem = String(data.get("mensagem") || "").trim();
-    const body = [
-      nome ? `Nome: ${nome}` : "",
-      email ? `E-mail: ${email}` : "",
-      "",
-      mensagem
-    ].filter(Boolean).join("\n");
+    const payload = {
+      nome: String(data.get("nome") || "").trim(),
+      email: String(data.get("email") || "").trim(),
+      mensagem: String(data.get("mensagem") || "").trim(),
+    };
 
-    openEmail("Contato pelo site do GELCIP", body || "Olá, gostaria de entrar em contato com o GELCIP.");
-    contactFormNote.textContent = "Seu aplicativo de e-mail foi aberto com a mensagem preenchida.";
+    if (!payload.nome || !payload.email || !payload.mensagem) {
+      setNote(contactFormNote, "Preencha todos os campos para enviar.", true);
+      return;
+    }
+
+    contactButton.disabled = true;
+    contactButton.textContent = "Enviando...";
+
+    try {
+      const response = await fetch(`${API_BASE}/contato`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        setNote(contactFormNote, "✓ Mensagem enviada com sucesso! Obrigado pelo contato.");
+        contactForm.reset();
+      } else {
+        setNote(contactFormNote, result.error || "Erro ao enviar mensagem. Tente novamente.", true);
+      }
+    } catch (err) {
+      setNote(contactFormNote, "Erro de conexão. Verifique sua internet e tente novamente.", true);
+    } finally {
+      contactButton.disabled = false;
+      contactButton.textContent = "Enviar mensagem";
+    }
   });
 }
-
-renderSubmissions();

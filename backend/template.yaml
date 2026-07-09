@@ -1,0 +1,125 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Backend serverless para formulários do site GELCIP
+
+Parameters:
+  AdminEmail:
+    Type: String
+    Default: contato@gelcip.com
+    Description: E-mail que recebe notificações de inscrições e contatos
+  SiteDomain:
+    Type: String
+    Default: http://gelcip.s3-website.us-east-2.amazonaws.com
+    Description: Domínio do site (para CORS)
+
+Globals:
+  Function:
+    Runtime: nodejs20.x
+    Timeout: 10
+    MemorySize: 128
+    Environment:
+      Variables:
+        ADMIN_EMAIL: !Ref AdminEmail
+        SITE_DOMAIN: !Ref SiteDomain
+    Architectures:
+      - arm64
+
+Resources:
+  # API Gateway
+  GelcipApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: prod
+      Cors:
+        AllowOrigin: !Sub "'${SiteDomain}'"
+        AllowMethods: "'POST,OPTIONS'"
+        AllowHeaders: "'Content-Type'"
+
+  # DynamoDB - Inscrições
+  InscricoesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: gelcip-inscricoes
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+
+  # DynamoDB - Contatos
+  ContatosTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: gelcip-contatos
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+
+  # Lambda - Inscrição
+  InscricaoFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: gelcip-inscricao
+      Handler: index.handler
+      CodeUri: inscricao/
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref InscricoesTable
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref InscricoesTable
+        - Statement:
+            - Effect: Allow
+              Action:
+                - ses:SendEmail
+              Resource: '*'
+      Events:
+        PostInscricao:
+          Type: Api
+          Properties:
+            RestApiId: !Ref GelcipApi
+            Path: /inscricao
+            Method: POST
+
+  # Lambda - Contato
+  ContatoFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: gelcip-contato
+      Handler: index.handler
+      CodeUri: contato/
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref ContatosTable
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref ContatosTable
+        - Statement:
+            - Effect: Allow
+              Action:
+                - ses:SendEmail
+              Resource: '*'
+      Events:
+        PostContato:
+          Type: Api
+          Properties:
+            RestApiId: !Ref GelcipApi
+            Path: /contato
+            Method: POST
+
+Outputs:
+  ApiUrl:
+    Description: URL base da API
+    Value: !Sub "https://${GelcipApi}.execute-api.${AWS::Region}.amazonaws.com/prod"
+  InscricoesTableName:
+    Description: Nome da tabela de inscrições
+    Value: !Ref InscricoesTable
+  ContatosTableName:
+    Description: Nome da tabela de contatos
+    Value: !Ref ContatosTable
