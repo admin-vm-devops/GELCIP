@@ -11,6 +11,14 @@ Parameters:
     Type: String
     Default: http://gelcip.s3-website.us-east-2.amazonaws.com
     Description: Domínio do site (para CORS)
+  AdminPasswordHash:
+    Type: String
+    NoEcho: true
+    Description: Hash bcrypt da senha do admin
+  JwtSecret:
+    Type: String
+    NoEcho: true
+    Description: Segredo para assinatura de tokens JWT
 
 Globals:
   Function:
@@ -167,6 +175,23 @@ Resources:
             RestApiId: !Ref GelcipApi
             Path: /admin/contatos/{id}
             Method: DELETE
+
+  # SSM Parameter Store - Segredos do Admin
+  AdminPasswordHashParam:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /gelcip/admin-password-hash
+      Type: String
+      Value: !Ref AdminPasswordHash
+      Description: Hash bcrypt da senha do admin
+
+  JwtSecretParam:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /gelcip/jwt-secret
+      Type: String
+      Value: !Ref JwtSecret
+      Description: Segredo JWT para autenticação do admin
 
   # Custom Resource - Esvaziar buckets S3 ao deletar o stack
   EmptyBucketsFunction:

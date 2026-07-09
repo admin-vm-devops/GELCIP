@@ -2,6 +2,23 @@
 
 Documentação específica da infraestrutura serverless. Para visão geral do projeto, veja o [README principal](../README.md).
 
+## Deploy / Destroy rápido
+
+```bash
+# Deploy completo (cria tudo do zero)
+./backend/scripts/deploy.sh
+
+# Destroy (deleta infra, preserva buckets S3 vazios)
+./backend/scripts/destroy.sh
+```
+
+### Variáveis de ambiente (opcional)
+
+| Variável | Descrição |
+|----------|-----------|
+| `GELCIP_ADMIN_PASSWORD` | Senha do admin (evita prompt interativo) |
+| `GELCIP_JWT_SECRET` | JWT secret fixo (se não definido, gera automaticamente) |
+
 ## Recursos AWS
 
 | Recurso | Nome/ID | Gerenciado por |
@@ -14,8 +31,8 @@ Documentação específica da infraestrutura serverless. Para visão geral do pr
 | Lambda | `gelcip-admin` | Stack `gelcip-backend` |
 | DynamoDB | `gelcip-inscricoes` | Stack `gelcip-backend` |
 | DynamoDB | `gelcip-contatos` | Stack `gelcip-backend` |
-| SSM | `/gelcip/admin-password-hash` | Manual |
-| SSM | `/gelcip/jwt-secret` | Manual |
+| SSM | `/gelcip/admin-password-hash` | Stack `gelcip-backend` |
+| SSM | `/gelcip/jwt-secret` | Stack `gelcip-backend` |
 | SES | `contato@gelcip.com` | Manual |
 
 ## Endpoints da API

@@ -10,6 +10,14 @@ Parameters:
     Type: String
     Default: contato@gelcip.com
     Description: E-mail que recebe notificações de inscrições e contatos
+  AdminPasswordHash:
+    Type: String
+    NoEcho: true
+    Description: Hash bcrypt da senha do admin (gerar com node -e "console.log(require('bcryptjs').hashSync('SENHA', 10))")
+  JwtSecret:
+    Type: String
+    NoEcho: true
+    Description: Segredo para assinatura de tokens JWT (string aleatória longa)
 
 Globals:
   Function:
@@ -236,6 +244,26 @@ Resources:
             RestApiId: !Ref GelcipApi
             Path: /admin/contatos/{id}
             Method: DELETE
+
+  # ============================================================
+  # SSM Parameter Store - Segredos do Admin
+  # ============================================================
+
+  AdminPasswordHashParam:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /gelcip/admin-password-hash
+      Type: String
+      Value: !Ref AdminPasswordHash
+      Description: Hash bcrypt da senha do admin
+
+  JwtSecretParam:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /gelcip/jwt-secret
+      Type: String
+      Value: !Ref JwtSecret
+      Description: Segredo JWT para autenticação do admin
 
   # ============================================================
   # CUSTOM RESOURCE - Esvaziar buckets S3 ao deletar o stack
