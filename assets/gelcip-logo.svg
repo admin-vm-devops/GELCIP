@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1100" role="img" aria-labelledby="title desc">
+  <title id="title">GELCIP</title>
+  <desc id="desc">Logo do GELCIP com ícone de casa azul e texto em azul escuro.</desc>
+  <rect width="1600" height="1100" fill="#ffffff"/>
+  <g transform="translate(0 18)">
+    <g transform="translate(800 320)">
+      <path d="M-220 10 L0 -185 L220 10" fill="none" stroke="#294968" stroke-width="34" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M-194 -6 L0 -176 L194 -6 V84 C194 159 157 230 96 272 H-96 C-157 230 -194 159 -194 84 Z" fill="#38b7c9"/>
+      <rect x="0" y="12" width="102" height="260" fill="#ffffff"/>
+      <circle cx="-98" cy="2" r="18" fill="#ffffff"/>
+      <circle cx="-54" cy="2" r="18" fill="#ffffff"/>
+      <circle cx="-98" cy="46" r="18" fill="#ffffff"/>
+      <circle cx="-54" cy="46" r="18" fill="#ffffff"/>
+    </g>
+    <text x="800" y="815" text-anchor="middle" fill="#294968"
+      font-family="Montserrat, Avenir Next, Helvetica Neue, Arial, sans-serif"
+      font-size="260" font-weight="300" letter-spacing="26">GELCIP</text>
+  </g>
+</svg>
