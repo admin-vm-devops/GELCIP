@@ -145,7 +145,10 @@ API_URL="${API_URL%/}"
 SCRIPT_FILE="${PROJECT_ROOT}/script.js"
 sed -i "s|const API_BASE = '.*';|const API_BASE = '${API_URL}';|" "$SCRIPT_FILE"
 
-echo -e "${GREEN}    ✓ script.js atualizado: ${API_URL}${NC}"
+ADMIN_FILE="${PROJECT_ROOT}/admin.html"
+sed -i "s|const API_BASE = '.*';|const API_BASE = '${API_URL}';|" "$ADMIN_FILE"
+
+echo -e "${GREEN}    ✓ script.js e admin.html atualizados: ${API_URL}${NC}"
 
 # -----------------------------------------------------------------------------
 # 6. Fazer upload do site para S3
