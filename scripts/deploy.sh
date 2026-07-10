@@ -1,14 +1,34 @@
 #!/bin/bash
 # =============================================================================
 # GELCIP - Deploy completo da infraestrutura
-# Recria toda a infra do zero a partir do repositório
+# Uso: ./scripts/deploy.sh [dev|prod]   (padrão: dev)
 # =============================================================================
 set -e
 
+# -----------------------------------------------------------------------------
+# Configuração do ambiente
+# -----------------------------------------------------------------------------
+ENV="${1:-dev}"
+
+if [[ "$ENV" != "dev" && "$ENV" != "prod" ]]; then
+  echo "Uso: $0 [dev|prod]"
+  echo "  dev  - Deploy no ambiente de desenvolvimento (padrão)"
+  echo "  prod - Deploy no ambiente de produção"
+  exit 1
+fi
+
 REGION="us-east-2"
-STACK_NAME="gelcip-backend"
-DEPLOY_BUCKET="gelcip-deploy"
-SITE_BUCKET="gelcip"
+
+if [ "$ENV" = "prod" ]; then
+  STACK_NAME="gelcip-backend"
+  DEPLOY_BUCKET="gelcip-deploy"
+  SITE_BUCKET="gelcip"
+else
+  STACK_NAME="gelcip-backend-dev"
+  DEPLOY_BUCKET="gelcip-deploy-dev"
+  SITE_BUCKET="gelcip-dev"
+fi
+
 ADMIN_EMAIL="contato@gelcip.com"
 SITE_DOMAIN="http://${SITE_BUCKET}.s3-website.${REGION}.amazonaws.com"
 
@@ -19,12 +39,25 @@ BACKEND_DIR="${PROJECT_ROOT}/backend"
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
 NC='\033[0m'
 
-echo -e "${GREEN}=== GELCIP - Deploy Completo ===${NC}"
+echo -e "${GREEN}=== GELCIP - Deploy Completo [${BLUE}${ENV^^}${GREEN}] ===${NC}"
 echo "Região: ${REGION}"
 echo "Stack: ${STACK_NAME}"
+echo "Site: ${SITE_DOMAIN}"
 echo ""
+
+# Confirmação para prod
+if [ "$ENV" = "prod" ]; then
+  echo -e "${YELLOW}⚠  Você está fazendo deploy em PRODUÇÃO!${NC}"
+  read -p "Confirmar? (s/N): " CONFIRM
+  if [[ "$CONFIRM" != "s" && "$CONFIRM" != "S" ]]; then
+    echo -e "${YELLOW}Cancelado.${NC}"
+    exit 0
+  fi
+  echo ""
+fi
 
 # -----------------------------------------------------------------------------
 # 1. Verificar pré-requisitos
@@ -115,6 +148,7 @@ aws cloudformation deploy \
   --stack-name "$STACK_NAME" \
   --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
   --parameter-overrides \
+    Environment="$ENV" \
     AdminEmail="$ADMIN_EMAIL" \
     SiteDomain="$SITE_DOMAIN" \
     AdminPasswordHash="$ADMIN_HASH" \
@@ -124,9 +158,9 @@ aws cloudformation deploy \
 echo -e "${GREEN}✓ Backend deployado${NC}"
 
 # -----------------------------------------------------------------------------
-# 5b. Atualizar URL da API no script.js
+# 5b. Atualizar URL da API no script.js e admin.html
 # -----------------------------------------------------------------------------
-echo -e "${YELLOW}    Atualizando URL da API no script.js...${NC}"
+echo -e "${YELLOW}    Atualizando URL da API no script.js e admin.html...${NC}"
 
 API_URL=$(aws cloudformation describe-stacks \
   --stack-name "$STACK_NAME" \
@@ -143,9 +177,9 @@ fi
 API_URL="${API_URL%/}"
 
 SCRIPT_FILE="${PROJECT_ROOT}/script.js"
-sed -i "s|const API_BASE = '.*';|const API_BASE = '${API_URL}';|" "$SCRIPT_FILE"
-
 ADMIN_FILE="${PROJECT_ROOT}/admin.html"
+
+sed -i "s|const API_BASE = '.*';|const API_BASE = '${API_URL}';|" "$SCRIPT_FILE"
 sed -i "s|const API_BASE = '.*';|const API_BASE = '${API_URL}';|" "$ADMIN_FILE"
 
 echo -e "${GREEN}    ✓ script.js e admin.html atualizados: ${API_URL}${NC}"
@@ -153,11 +187,12 @@ echo -e "${GREEN}    ✓ script.js e admin.html atualizados: ${API_URL}${NC}"
 # -----------------------------------------------------------------------------
 # 6. Fazer upload do site para S3
 # -----------------------------------------------------------------------------
-echo -e "${YELLOW}[6/6] Sincronizando site com S3...${NC}"
+echo -e "${YELLOW}[6/6] Sincronizando site com S3 (${SITE_BUCKET})...${NC}"
 
 aws s3 sync "$PROJECT_ROOT" "s3://${SITE_BUCKET}" \
   --exclude ".git/*" \
   --exclude "backend/*" \
+  --exclude "scripts/*" \
   --exclude ".gitignore" \
   --exclude "*.md" \
   --region "$REGION"
@@ -168,13 +203,16 @@ echo -e "${GREEN}✓ Site sincronizado${NC}"
 # Resultado
 # -----------------------------------------------------------------------------
 echo ""
-echo -e "${GREEN}=== Deploy completo! ===${NC}"
+echo -e "${GREEN}=== Deploy completo! [${BLUE}${ENV^^}${GREEN}] ===${NC}"
 echo ""
 echo "Site:  ${SITE_DOMAIN}"
 echo "Admin: ${SITE_DOMAIN}/admin.html"
-echo ""
-
-# Mostrar URL da API
 echo "API:   ${API_URL}"
 echo ""
-echo -e "${YELLOW}NOTA: Verifique o e-mail ${ADMIN_EMAIL} no SES para ativar notificações.${NC}"
+
+if [ "$ENV" = "dev" ]; then
+  echo -e "${YELLOW}NOTA: Este é o ambiente de DEV. Para promover para produção:${NC}"
+  echo "  git checkout main && git merge develop && ./scripts/deploy.sh prod"
+else
+  echo -e "${YELLOW}NOTA: Verifique o e-mail ${ADMIN_EMAIL} no SES para ativar notificações.${NC}"
+fi

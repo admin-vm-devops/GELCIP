@@ -1,20 +1,43 @@
 #!/bin/bash
 # =============================================================================
 # GELCIP - Destroy da infraestrutura
+# Uso: ./scripts/destroy.sh [dev|prod]   (padrão: dev)
 # Deleta o stack CloudFormation (buckets S3 são retidos vazios)
 # =============================================================================
 set -e
 
+# -----------------------------------------------------------------------------
+# Configuração do ambiente
+# -----------------------------------------------------------------------------
+ENV="${1:-dev}"
+
+if [[ "$ENV" != "dev" && "$ENV" != "prod" ]]; then
+  echo "Uso: $0 [dev|prod]"
+  echo "  dev  - Destruir ambiente de desenvolvimento (padrão)"
+  echo "  prod - Destruir ambiente de produção"
+  exit 1
+fi
+
 REGION="us-east-2"
-STACK_NAME="gelcip-backend"
+
+if [ "$ENV" = "prod" ]; then
+  STACK_NAME="gelcip-backend"
+  SSM_PREFIX="/gelcip"
+else
+  STACK_NAME="gelcip-backend-dev"
+  SSM_PREFIX="/gelcip-dev"
+fi
+
+ADMIN_EMAIL="contato@gelcip.com"
 
 # Cores
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
 NC='\033[0m'
 
-echo -e "${RED}=== GELCIP - Destroy da Infraestrutura ===${NC}"
+echo -e "${RED}=== GELCIP - Destroy da Infraestrutura [${BLUE}${ENV^^}${RED}] ===${NC}"
 echo "Região: ${REGION}"
 echo "Stack: ${STACK_NAME}"
 echo ""
@@ -22,16 +45,29 @@ echo "Isso vai DESTRUIR:"
 echo "  - API Gateway"
 echo "  - Lambdas (inscricao, contato, admin, empty-buckets)"
 echo "  - DynamoDB (inscricoes, contatos) — DADOS PERDIDOS!"
-echo "  - SES Email Identity"
-echo "  - SSM Parameters (admin-password-hash, jwt-secret)"
+echo "  - SSM Parameters (${SSM_PREFIX}/admin-password-hash, ${SSM_PREFIX}/jwt-secret)"
+
+if [ "$ENV" = "prod" ]; then
+  echo "  - SES Email Identity"
+fi
+
 echo ""
 echo "Os buckets S3 serão ESVAZIADOS mas PRESERVADOS (nome/URL mantidos)."
 echo ""
 
-read -p "Tem certeza? Digite 'destroy' para confirmar: " CONFIRM
-if [ "$CONFIRM" != "destroy" ]; then
-  echo -e "${YELLOW}Cancelado.${NC}"
-  exit 0
+if [ "$ENV" = "prod" ]; then
+  echo -e "${RED}⚠  ATENÇÃO: Você está destruindo o ambiente de PRODUÇÃO!${NC}"
+  read -p "Digite 'destroy prod' para confirmar: " CONFIRM
+  if [ "$CONFIRM" != "destroy prod" ]; then
+    echo -e "${YELLOW}Cancelado.${NC}"
+    exit 0
+  fi
+else
+  read -p "Tem certeza? Digite 'destroy' para confirmar: " CONFIRM
+  if [ "$CONFIRM" != "destroy" ]; then
+    echo -e "${YELLOW}Cancelado.${NC}"
+    exit 0
+  fi
 fi
 
 echo ""
@@ -39,7 +75,7 @@ echo ""
 # -----------------------------------------------------------------------------
 # 1. Verificar se o stack existe
 # -----------------------------------------------------------------------------
-echo -e "${YELLOW}[1/2] Verificando stack...${NC}"
+echo -e "${YELLOW}[1/3] Verificando stack...${NC}"
 
 STACK_STATUS=$(aws cloudformation describe-stacks \
   --stack-name "$STACK_NAME" \
@@ -77,25 +113,34 @@ echo -e "${GREEN}✓ Stack deletado com sucesso${NC}"
 echo -e "${YELLOW}[3/3] Limpando recursos órfãos...${NC}"
 
 # SSM Parameters
-for PARAM in "/gelcip/admin-password-hash" "/gelcip/jwt-secret"; do
+for PARAM in "${SSM_PREFIX}/admin-password-hash" "${SSM_PREFIX}/jwt-secret"; do
   if aws ssm get-parameter --name "$PARAM" --region "$REGION" &>/dev/null; then
     aws ssm delete-parameter --name "$PARAM" --region "$REGION"
     echo "  Deletado SSM: $PARAM"
   fi
 done
 
-# SES Email Identity
-ADMIN_EMAIL="contato@gelcip.com"
-if aws ses get-identity-verification-attributes --identities "$ADMIN_EMAIL" --region "$REGION" \
-   --query "VerificationAttributes.\"${ADMIN_EMAIL}\"" --output text 2>/dev/null | grep -q .; then
-  aws ses delete-identity --identity "$ADMIN_EMAIL" --region "$REGION"
-  echo "  Deletado SES: $ADMIN_EMAIL"
+# SES Email Identity (apenas para prod)
+if [ "$ENV" = "prod" ]; then
+  if aws ses get-identity-verification-attributes --identities "$ADMIN_EMAIL" --region "$REGION" \
+     --query "VerificationAttributes.\"${ADMIN_EMAIL}\"" --output text 2>/dev/null | grep -q .; then
+    aws ses delete-identity --identity "$ADMIN_EMAIL" --region "$REGION"
+    echo "  Deletado SES: $ADMIN_EMAIL"
+  fi
 fi
 
 echo -e "${GREEN}✓ Recursos órfãos limpos${NC}"
 echo ""
-echo "Buckets preservados (vazios):"
-echo "  - s3://gelcip"
-echo "  - s3://gelcip-deploy"
+
+if [ "$ENV" = "prod" ]; then
+  echo "Buckets preservados (vazios):"
+  echo "  - s3://gelcip"
+  echo "  - s3://gelcip-deploy"
+else
+  echo "Buckets preservados (vazios):"
+  echo "  - s3://gelcip-dev"
+  echo "  - s3://gelcip-deploy-dev"
+fi
+
 echo ""
-echo "Para recriar a infra: ./scripts/deploy.sh"
+echo "Para recriar a infra: ./scripts/deploy.sh ${ENV}"

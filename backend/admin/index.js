@@ -9,6 +9,7 @@ const ssm = new SSMClient();
 const INSCRICOES_TABLE = process.env.INSCRICOES_TABLE;
 const CONTATOS_TABLE = process.env.CONTATOS_TABLE;
 const SITE_DOMAIN = process.env.SITE_DOMAIN;
+const SSM_PREFIX = process.env.SSM_PREFIX || '/gelcip';
 const ADMIN_USER = 'gelcip';
 
 // Cache de parâmetros SSM (evita chamadas repetidas)
@@ -38,14 +39,14 @@ async function getSSMParam(name) {
 
 async function getPasswordHash() {
   if (!cachedPasswordHash) {
-    cachedPasswordHash = await getSSMParam('/gelcip/admin-password-hash');
+    cachedPasswordHash = await getSSMParam(`${SSM_PREFIX}/admin-password-hash`);
   }
   return cachedPasswordHash;
 }
 
 async function getJwtSecret() {
   if (!cachedJwtSecret) {
-    cachedJwtSecret = await getSSMParam('/gelcip/jwt-secret');
+    cachedJwtSecret = await getSSMParam(`${SSM_PREFIX}/jwt-secret`);
   }
   return cachedJwtSecret;
 }
