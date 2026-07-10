@@ -2,15 +2,17 @@
 
 Site institucional do GELCIP, uma entidade filantrópica espírita localizada no Ipiranga, São Paulo/SP.
 
-🌐 **Site:** http://gelcip.s3-website.us-east-2.amazonaws.com  
-🔒 **Admin:** http://gelcip.s3-website.us-east-2.amazonaws.com/admin.html
+| Ambiente | Site | Admin |
+|----------|------|-------|
+| **Produção** | http://gelcip.s3-website.us-east-2.amazonaws.com | http://gelcip.s3-website.us-east-2.amazonaws.com/admin.html |
+| **Desenvolvimento** | http://gelcip-dev.s3-website.us-east-2.amazonaws.com | http://gelcip-dev.s3-website.us-east-2.amazonaws.com/admin.html |
 
 ## Arquitetura
 
 ```
 ┌──────────────┐       ┌──────────────┐       ┌─────────────┐
 │   Browser    │──────▶│  S3 Website  │       │  DynamoDB   │
-│  (usuário)   │       │   (gelcip)   │       │  (dados)    │
+│  (usuário)   │       │  (gelcip*)   │       │  (dados)    │
 └──────┬───────┘       └──────────────┘       └──────▲──────┘
        │                                              │
        │  fetch POST/GET                              │
@@ -21,6 +23,35 @@ Site institucional do GELCIP, uma entidade filantrópica espírita localizada no
 ```
 
 **Stack:** HTML5 + CSS + JS vanilla (frontend) · Node.js 20 + DynamoDB + SES (backend) · CloudFormation/SAM (IaC)
+
+## Ambientes
+
+O projeto possui dois ambientes isolados na mesma conta AWS. Todos os recursos são parametrizados pelo sufixo `-dev` (dev) ou sem sufixo (prod).
+
+| Recurso | Produção | Desenvolvimento |
+|---------|----------|-----------------|
+| Branch | `main` | `develop` |
+| S3 Site | `gelcip` | `gelcip-dev` |
+| S3 Deploy | `gelcip-deploy` | `gelcip-deploy-dev` |
+| Stack CF | `gelcip-backend` | `gelcip-backend-dev` |
+| DynamoDB | `gelcip-inscricoes`, `gelcip-contatos` | `gelcip-inscricoes-dev`, `gelcip-contatos-dev` |
+| SSM | `/gelcip/*` | `/gelcip-dev/*` |
+| Lambdas | `gelcip-{função}` | `gelcip-{função}-dev` |
+
+### Fluxo de trabalho
+
+```bash
+# 1. Desenvolver na branch develop
+git checkout develop
+# ... fazer alterações ...
+./scripts/deploy.sh dev       # testa no ambiente dev
+
+# 2. Promover para produção
+git checkout main
+git merge develop
+./scripts/deploy.sh prod      # deploy em produção (pede confirmação)
+git push origin main
+```
 
 ## Funcionalidades
 
@@ -38,13 +69,12 @@ Site institucional do GELCIP, uma entidade filantrópica espírita localizada no
 ├── styles.css              Estilos responsivos (variáveis CSS)
 ├── assets/                 Imagens do site (logo SVG, fotos)
 ├── scripts/
-│   ├── deploy.sh           Deploy completo (frontend + backend)
-│   └── destroy.sh          Destroy completo (stack + limpeza)
+│   ├── deploy.sh           Deploy completo (aceita: dev | prod)
+│   └── destroy.sh          Destroy completo (aceita: dev | prod)
 └── backend/
     ├── README.md           Documentação técnica do backend
-    ├── deploy.yaml         Template CloudFormation (deploy incremental)
+    ├── deploy.yaml         Template CloudFormation parametrizado (Environment)
     ├── template.yaml       Template completo (recriação do zero)
-    ├── package.json        Dependências compartilhadas
     ├── inscricao/          Lambda: POST /inscricao
     ├── contato/            Lambda: POST /contato
     ├── admin/              Lambda: POST /admin/login, GET/DELETE dados
@@ -58,34 +88,45 @@ Site institucional do GELCIP, uma entidade filantrópica espírita localizada no
 ```bash
 cd ~/Projects/GELCIP
 
-# Deploy completo (frontend + backend)
-./scripts/deploy.sh
+# Deploy em dev (padrão — seguro)
+./scripts/deploy.sh dev
 
-# Destruir tudo (esvazia buckets + deleta stack + limpa SSM/SES)
-./scripts/destroy.sh
+# Deploy em produção (pede confirmação)
+./scripts/deploy.sh prod
+
+# Destruir dev
+./scripts/destroy.sh dev
+
+# Destruir produção (exige digitar 'destroy prod')
+./scripts/destroy.sh prod
 ```
 
-O `deploy.sh` automatiza todo o processo:
+**O que o `deploy.sh` automatiza:**
 - Verifica pré-requisitos (AWS CLI, Node, credenciais)
 - Coleta/gera segredos (senha admin + JWT secret)
 - Instala dependências das Lambdas
-- Empacota e deploya via CloudFormation
-- Captura a URL da API e atualiza `script.js` automaticamente
-- Sincroniza frontend com S3
+- Empacota e deploya via CloudFormation com parâmetro `Environment`
+- Captura a URL da API e atualiza `script.js` e `admin.html` automaticamente
+- Sincroniza frontend com o bucket S3 do respectivo ambiente
 
-O `destroy.sh` limpa tudo:
+**O que o `destroy.sh` automatiza:**
 - Deleta stack CloudFormation (Lambda `empty-buckets` esvazia S3 automaticamente)
-- Limpa SSM Parameters órfãos
-- Limpa SES Identity órfã
-- Buckets S3 preservados (vazios)
+- Limpa SSM Parameters órfãos (prefixo dinâmico por ambiente)
+- Limpa SES Identity órfã (apenas em prod)
+- Buckets S3 preservados (vazios) para manter URLs
 
 ### Manual - Frontend
 
 ```bash
+# Dev
+aws s3 sync . s3://gelcip-dev \
+  --exclude ".git/*" --exclude "backend/*" --exclude "scripts/*" \
+  --exclude ".gitignore" --exclude "*.md" --region us-east-2
+
+# Prod
 aws s3 sync . s3://gelcip \
   --exclude ".git/*" --exclude "backend/*" --exclude "scripts/*" \
-  --exclude ".gitignore" --exclude "packaged-deploy.yaml" \
-  --region us-east-2
+  --exclude ".gitignore" --exclude "*.md" --region us-east-2
 ```
 
 ### Manual - Backend
@@ -93,18 +134,19 @@ aws s3 sync . s3://gelcip \
 ```bash
 cd backend
 
-aws cloudformation package \
-  --template-file deploy.yaml \
-  --s3-bucket gelcip-deploy \
-  --output-template-file packaged-deploy.yaml \
+# Dev
+aws cloudformation package --template-file deploy.yaml --s3-bucket gelcip-deploy-dev --output-template-file packaged-deploy.yaml --region us-east-2
+aws cloudformation deploy --template-file packaged-deploy.yaml --stack-name gelcip-backend-dev \
+  --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
+  --parameter-overrides Environment=dev AdminEmail=contato@gelcip.com \
+    SiteDomain=http://gelcip-dev.s3-website.us-east-2.amazonaws.com \
   --region us-east-2
 
-aws cloudformation deploy \
-  --template-file packaged-deploy.yaml \
-  --stack-name gelcip-backend \
+# Prod
+aws cloudformation package --template-file deploy.yaml --s3-bucket gelcip-deploy --output-template-file packaged-deploy.yaml --region us-east-2
+aws cloudformation deploy --template-file packaged-deploy.yaml --stack-name gelcip-backend \
   --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
-  --parameter-overrides \
-    AdminEmail=contato@gelcip.com \
+  --parameter-overrides Environment=prod AdminEmail=contato@gelcip.com \
     SiteDomain=http://gelcip.s3-website.us-east-2.amazonaws.com \
   --region us-east-2
 ```
