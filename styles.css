@@ -144,7 +144,8 @@ a {
 }
 
 .menu a:hover {
-  background: #e7f1f8;
+  background: var(--primary);
+  color: #fff;
 }
 
 .menu .menu-cta {
