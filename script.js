@@ -1,5 +1,5 @@
 // Configuração da API - atualizar após deploy do backend
-const API_BASE = 'https://9bkaefwtn2.execute-api.us-east-2.amazonaws.com/dev';
+const API_BASE = 'https://2y7jhhwf19.execute-api.us-east-2.amazonaws.com/prod';
 
 // Menu toggle
 const menuButton = document.querySelector(".menu-toggle");
