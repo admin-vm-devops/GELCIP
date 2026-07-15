@@ -18,7 +18,7 @@ Site institucional do GELCIP, uma entidade filantrópica espírita localizada no
        │  fetch POST/GET                              │
        └──────────────▶┌──────────────┐       ┌──────┴──────┐
                        │ API Gateway  │──────▶│   Lambda    │──▶ SES (e-mail)
-                       │   /prod      │       │  (Node 20)  │
+                       │   /{env}     │       │  (Node 20)  │
                        └──────────────┘       └─────────────┘
 ```
 
